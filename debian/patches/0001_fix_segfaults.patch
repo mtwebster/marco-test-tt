@@ -1,0 +1,63 @@
+Author: rcaridade145 <rcaridade145@gmail.com>
+Description: Introduce nullpointer checks and return null if
+ validation fails and guard against null changes.
+
+diff --git a/src/compositor/compositor-xrender.c b/src/compositor/compositor-xrender.c
+index dc7ac15f..4a05bc7a 100644
+--- a/src/compositor/compositor-xrender.c
++++ b/src/compositor/compositor-xrender.c
+@@ -645,7 +645,7 @@ shadow_picture_clip (Display          *xdisplay,
+ 
+   visible_region = meta_window_get_frame_bounds (cw->window);
+ 
+-  if (!visible_region)
++  if (visible_region == NULL)
+     return;
+ 
+   shadow_dx = -1 * (int) shadow_offsets_x [cw->shadow_type] - borders.invisible.left;
+@@ -1153,9 +1153,13 @@ border_size (MetaCompWindow *cw)
+     {
+       visible_region = meta_window_get_frame_bounds (cw->window);
+ 
+-      if (visible_region)
++      if (visible_region != NULL) {
+         visible = cairo_region_to_xserver_region (xdisplay, visible_region);
++      }
++      else {
++        g_warning ("Visible region is null");
+     }
++  }
+ 
+   meta_error_trap_push (display);
+   border = XFixesCreateRegionFromWindow (xdisplay, cw->id,
+diff --git a/src/core/frame.c b/src/core/frame.c
+index 6c1c7b21..647cae92 100644
+--- a/src/core/frame.c
++++ b/src/core/frame.c
+@@ -407,10 +407,16 @@ meta_frame_sync_to_window (MetaFrame *frame,
+ cairo_region_t *
+ meta_frame_get_frame_bounds (MetaFrame *frame)
+ {
+-  return meta_ui_get_frame_bounds (frame->window->screen->ui,
++  if(frame->xwindow &&
++     frame->window !=NULL &&
++     frame->window->screen !=NULL && 
++     frame->window->screen->ui !=NULL)  {
++	return meta_ui_get_frame_bounds (frame->window->screen->ui,
+                                    frame->xwindow,
+                                    frame->rect.width,
+                                    frame->rect.height);
++  }
++  return NULL;
+ }
+ 
+ void
+
+
+marco (1.24.0-1ubuntu1~focal2.0) focal; urgency=medium
+
+  * debian/patches:
+    + Add 0001_fix-segfaults.patch. Fix calculation of borders to
+      prevent segfaults. (LP: #1863431, #1863392)
+
+ -- Martin Wimpress <martin.wimpress@ubuntu.com>  Mon, 23 Mar 2020 23:03:18 +0000
